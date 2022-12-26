@@ -1,0 +1,277 @@
+<!doctype html><html lang=en><head prefix="og: http://ogp.me/ns#"><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,maximum-scale=1"><meta property="og:title" content=" ZTDBP Best Practices &#183;  ZTDBP Blog"><meta name=theme-color content="#hexcolor"><meta property="og:site_name" content="ZTDBP Blog"><meta property="og:url" content="https://ztdbp.xyz/ztdbp_blog/ztdbp-best-practices/"><meta property="og:type" content="article"><meta property="og:article:published_time" content="2022-05-07T14:19:28+08:00"><meta property="og:article:tag" content="ZTA"><meta property="og:article:tag" content="ZTDBP"><meta property="og:article:tag" content="Practice"><title>ZTDBP Best Practices &#183; ZTDBP Blog</title><link rel="alternative stylesheet" href=https://ztdbp.xyz/ztdbp_blog/css/bootstrap.min.css><link rel=stylesheet href=https://ztdbp.xyz/ztdbp_blog/css/font-awesome.min.css><link rel=stylesheet href=https://ztdbp.xyz/ztdbp_blog/css/main.css><link rel=stylesheet href=https://ztdbp.xyz/ztdbp_blog/css/github.css><link rel=stylesheet href=https://ztdbp.xyz/ztdbp_blog/css/color-theme.css><link rel=stylesheet href="//fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400" type=text/css><link rel="shortcut icon" href=https://ztdbp.xyz/ztdbp_blog/img/favicon.ico><link rel=apple-touch-icon href=https://ztdbp.xyz/ztdbp_blog/images/apple-touch-icon.png></head><body><header class=global-header style="background-image:url(https://picsum.photos/1920/1080?blur=3)"><section class=header-text><h1><a href=https://ztdbp.xyz/ztdbp_blog/>ZTDBP Blog</a></h1><h3 class=tag-line>Record the bits and pieces of ZTDBP.</h3><a class="btn btn-default btn-home" href=https://ztdbp.xyz/ztdbp_blog/><i class="fa fa-angle-left" aria-hidden=true></i>
+&nbsp;Home</a><div class=navbar-container><a class="btn btn-default navbar-item" href=https://ztdbp.xyz/ztdbp_blog/categories>Categories</a>
+<a class="btn btn-default navbar-item" href=https://ztdbp.xyz/ztdbp_blog/tags>Tags</a>
+<a class="btn btn-default navbar-item" href=https://www.ZTDBP.xyz>ZTDBP</a></div></section></header><main class=container><article><header class=article-title><h1 class=text-primary>ZTDBP Best Practices</h1></header><div class=delimiter></div><section><h2 id=ztdbp-practice>ZTDBP Practice</h2><p>This paper mainly records the rapid implementation and deployment of the main projects of ZTDBP, as well as the necessary configuration of each project, so as to realize the zero trust network security platform as soon as possible.</p><h3 id=get-start>Get Start</h3><p>Our zero-trust platform initialization relies on the basic components of Mysql, ZACA and ZAManager. The following is the deployment method we have prepared for you for your reference. You can customize and modify it and use it better.</p><p>First of all, we need to create the container network we need:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-shell data-lang=shell><span style=display:flex><span>$ docker network create zta
+</span></span></code></pre></div><p>We all use docker-compose deployment of these components. The following is the docker-compose reference, but this docker-compose cannot be used immediately. Some initialization database, initialization configuration and other information need to be mapped, which will also be displayed next:</p><p>Finally, the new deployment directory folder is as follows:</p><pre tabindex=0><code>$ tree ./
+├── docker-compose.yaml
+├── init.sql
+├── nginx.conf
+└── config.json
+</code></pre><p>docker.compose.yml Example：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=display:flex><span><span style=color:#f92672>version</span>: <span style=color:#e6db74>&#39;3.3&#39;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>services</span>:
+</span></span><span style=display:flex><span>  <span style=color:#f92672>mysql</span>:
+</span></span><span style=display:flex><span>    <span style=color:#f92672>image</span>: <span style=color:#ae81ff>mysql:5.7</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>restart</span>: <span style=color:#ae81ff>always</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>ports</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>3306</span>:<span style=color:#ae81ff>3306</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>command</span>: --<span style=color:#ae81ff>init-file /data/application/init.sql</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>environment</span>:
+</span></span><span style=display:flex><span>      <span style=color:#f92672>MYSQL_ROOT_PASSWORD</span>: <span style=color:#ae81ff>root</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>networks</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>zta</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>volumes</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>./init.sql:/data/application/init.sql</span>
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>mysql-data:/var/lib/mysql</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#f92672>root-ca-tls</span>:
+</span></span><span style=display:flex><span>    <span style=color:#f92672>image</span>: <span style=color:#ae81ff>zhangshuainbb/zaca:0.0.2</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>command</span>: [<span style=color:#e6db74>&#34;./zaca&#34;</span>, <span style=color:#e6db74>&#34;tls&#34;</span>]
+</span></span><span style=display:flex><span>    <span style=color:#f92672>volumes</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#e6db74>&#34;./config.json:/etc/zaca/config.json&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>environment</span>:
+</span></span><span style=display:flex><span>      <span style=color:#f92672>IS_ENV</span>: <span style=color:#e6db74>&#39;test&#39;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>IS_HTTP_CA_LISTEN</span>: <span style=color:#e6db74>&#39;0.0.0.0:8083&#39;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>IS_SINGLECA_CONFIG_PATH</span>: <span style=color:#e6db74>&#39;/etc/zaca/config.json&#39;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>IS_INFLUXDB_ENABLED</span>: <span style=color:#e6db74>&#39;false&#39;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>IS_KEYMANAGER_SELF_SIGN</span>: <span style=color:#e6db74>&#39;true&#39;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>IS_MYSQL_DSN</span>: <span style=color:#e6db74>&#39;root:root@tcp(mysql:3306)/root_cap?charset=utf8mb4&amp;parseTime=True&amp;loc=Local&#39;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>depends_on</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>mysql</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>networks</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>zta</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>restart</span>: <span style=color:#ae81ff>always</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#f92672>zaca-tls</span>:
+</span></span><span style=display:flex><span>    <span style=color:#f92672>image</span>: <span style=color:#ae81ff>zhangshuainbb/zaca:0.0.2</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>command</span>: [<span style=color:#e6db74>&#34;./zaca&#34;</span>, <span style=color:#e6db74>&#34;tls&#34;</span>]
+</span></span><span style=display:flex><span>    <span style=color:#f92672>ports</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#e6db74>&#34;8081:8081&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>volumes</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#e6db74>&#34;./config.json:/etc/zaca/config.json&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>environment</span>:
+</span></span><span style=display:flex><span>      <span style=color:#f92672>IS_ENV</span>: <span style=color:#e6db74>&#39;test&#39;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>IS_SINGLECA_CONFIG_PATH</span>: <span style=color:#e6db74>&#39;/etc/zaca/config.json&#39;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>IS_KEYMANAGER_UPPER_CA</span>: <span style=color:#e6db74>&#34;https://root-ca-tls:8083&#34;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>IS_MYSQL_DSN</span>: <span style=color:#e6db74>&#39;root:root@tcp(mysql:3306)/cap?charset=utf8mb4&amp;parseTime=True&amp;loc=Local&#39;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>IS_OCSP_HOST</span>: <span style=color:#e6db74>&#39;http://zaca-ocsp:8082&#39;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>depends_on</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>mysql</span>
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>root-ca-tls</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>networks</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>zta</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>restart</span>: <span style=color:#ae81ff>always</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#f92672>zaca-ocsp</span>:
+</span></span><span style=display:flex><span>    <span style=color:#f92672>image</span>: <span style=color:#ae81ff>zhangshuainbb/zaca:0.0.2</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>command</span>: [<span style=color:#e6db74>&#34;./zaca&#34;</span>, <span style=color:#e6db74>&#34;ocsp&#34;</span>]
+</span></span><span style=display:flex><span>    <span style=color:#f92672>ports</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#e6db74>&#34;8082:8082&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>volumes</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#e6db74>&#34;./ca_config.json:/etc/zaca/config.json&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>environment</span>:
+</span></span><span style=display:flex><span>      <span style=color:#f92672>IS_ENV</span>: <span style=color:#e6db74>&#39;test&#39;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>IS_SINGLECA_CONFIG_PATH</span>: <span style=color:#e6db74>&#39;/etc/zaca/config.json&#39;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>IS_KEYMANAGER_UPPER_CA</span>: <span style=color:#e6db74>&#34;https://root-ca-tls:8083&#34;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>IS_MYSQL_DSN</span>: <span style=color:#e6db74>&#39;root:root@tcp(mysql:3306)/cap?charset=utf8mb4&amp;parseTime=True&amp;loc=Local&#39;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>depends_on</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>mysql</span>
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>root-ca-tls</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>networks</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>zta</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>restart</span>: <span style=color:#ae81ff>always</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#f92672>zaca-api</span>:
+</span></span><span style=display:flex><span>    <span style=color:#f92672>image</span>: <span style=color:#ae81ff>zhangshuainbb/zaca:0.0.2</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>command</span>: [<span style=color:#e6db74>&#34;./zaca&#34;</span>, <span style=color:#e6db74>&#34;api&#34;</span>]
+</span></span><span style=display:flex><span>    <span style=color:#f92672>ports</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#e6db74>&#34;8080:8080&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>volumes</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#e6db74>&#34;./ca_config.json:/etc/zaca/config.json&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>environment</span>:
+</span></span><span style=display:flex><span>      <span style=color:#f92672>IS_ENV</span>: <span style=color:#e6db74>&#39;test&#39;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>IS_SINGLECA_CONFIG_PATH</span>: <span style=color:#e6db74>&#39;/etc/zaca/config.json&#39;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>IS_KEYMANAGER_UPPER_CA</span>: <span style=color:#e6db74>&#34;https://root-ca-tls:8083&#34;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>IS_MYSQL_DSN</span>: <span style=color:#e6db74>&#39;root:root@tcp(mysql:3306)/cap?charset=utf8mb4&amp;parseTime=True&amp;loc=Local&#39;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>depends_on</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>mysql</span>
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>root-ca-tls</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>networks</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>zta</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>restart</span>: <span style=color:#ae81ff>always</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#f92672>zta-portal</span>:
+</span></span><span style=display:flex><span>    <span style=color:#f92672>image</span>: <span style=color:#ae81ff>rovast/za-portal:v0.0.2</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>restart</span>: <span style=color:#ae81ff>always</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>ports</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#e6db74>&#39;80:80&#39;</span>
+</span></span><span style=display:flex><span>      - <span style=color:#e6db74>&#39;443:443&#39;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>networks</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>zta</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>volumes</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>./nginx.conf:/etc/nginx/nginx.conf</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#f92672>zta-backend</span>:
+</span></span><span style=display:flex><span>    <span style=color:#f92672>image</span>: <span style=color:#ae81ff>taosheng205054/zamanager:0.0.4</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>restart</span>: <span style=color:#ae81ff>always</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>environment</span>:
+</span></span><span style=display:flex><span>      <span style=color:#f92672>ZTA_MYSQL_HOST</span>: <span style=color:#e6db74>&#39;mysql&#39;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>ZTA_MYSQL_USER</span>: <span style=color:#e6db74>&#39;root&#39;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>ZTA_MYSQL_PASSWORD</span>: <span style=color:#e6db74>&#39;root&#39;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>ZTA_CA_SIGN_URL</span>: <span style=color:#e6db74>&#39;https://root-ca-tls:8083&#39;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>ZTA_CA_AUTH_KEY</span>: <span style=color:#e6db74>&#39;0739a645a7d6601d9d45f6b237c4edeadad904f2fce53625dfdd541ec4fc8134&#39;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>depends_on</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>mysql</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>networks</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>zta</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>networks</span>:
+</span></span><span style=display:flex><span>  <span style=color:#f92672>zta</span>:
+</span></span><span style=display:flex><span>    <span style=color:#f92672>driver</span>: <span style=color:#ae81ff>bridge</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>volumes</span>:
+</span></span><span style=display:flex><span>  <span style=color:#f92672>mysql-data</span>:
+</span></span></code></pre></div><p>Init.sql Example: Initialize database information</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sql data-lang=sql><span style=display:flex><span><span style=color:#66d9ef>CREATE</span> <span style=color:#66d9ef>DATABASE</span> <span style=color:#66d9ef>IF</span> <span style=color:#66d9ef>NOT</span> <span style=color:#66d9ef>EXISTS</span> root_cap;
+</span></span><span style=display:flex><span><span style=color:#66d9ef>CREATE</span> <span style=color:#66d9ef>DATABASE</span> <span style=color:#66d9ef>IF</span> <span style=color:#66d9ef>NOT</span> <span style=color:#66d9ef>EXISTS</span> cap;
+</span></span><span style=display:flex><span><span style=color:#66d9ef>CREATE</span> <span style=color:#66d9ef>DATABASE</span> <span style=color:#66d9ef>IF</span> <span style=color:#66d9ef>NOT</span> <span style=color:#66d9ef>EXISTS</span> zta;
+</span></span></code></pre></div><p>nginx.conf Example: The front end of the zero-trust network platform needs the support of nginx，You need to modify the domain name to facilitate your access.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-shell data-lang=shell><span style=display:flex><span>user  nginx;
+</span></span><span style=display:flex><span>worker_processes  auto;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>error_log  /var/log/nginx/error.log warn;
+</span></span><span style=display:flex><span>pid        /var/run/nginx.pid;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>events <span style=color:#f92672>{</span>
+</span></span><span style=display:flex><span>    worker_connections  10240;
+</span></span><span style=display:flex><span><span style=color:#f92672>}</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>http <span style=color:#f92672>{</span>
+</span></span><span style=display:flex><span>    sendfile on;
+</span></span><span style=display:flex><span>    tcp_nopush on;
+</span></span><span style=display:flex><span>    tcp_nodelay on;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    keepalive_timeout 65;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    access_log off;
+</span></span><span style=display:flex><span>    error_log off;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    include mime.types;
+</span></span><span style=display:flex><span>    default_type application/octet-stream;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    gzip  on;
+</span></span><span style=display:flex><span>    gzip_vary on;
+</span></span><span style=display:flex><span>    gzip_proxied any;
+</span></span><span style=display:flex><span>    gzip_comp_level 6;
+</span></span><span style=display:flex><span>    gzip_types text/html text/richtext text/plain text/css text/x-script text/x-component text/x-java-source text/x-markdown application/javascript application/x-javascript text/javascript text/js image/x-icon image/vnd.microsoft.icon application/x-perl application/x-httpd-cgi text/xml application/xml application/xml+rss application/vnd.api+json  application/x-protobuf  application/json multipart/bag multipart/mixed application/xhtml+xml font/ttf font/otf font/x-woff image/svg+xml application/vnd.ms-fontobject application/ttf application/x-ttf application/otf application/x-otf application/truetype application/opentype application/x-opentype application/font-woff application/eot application/font application/font-sfnt application/wasm application/javascript-binast  application/manifest+json  application/ld+json;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    brotli on;
+</span></span><span style=display:flex><span>    brotli_static on;
+</span></span><span style=display:flex><span>    brotli_comp_level 6;
+</span></span><span style=display:flex><span>    brotli_types text/html text/richtext text/plain text/css text/x-script text/x-component text/x-java-source text/x-markdown application/javascript application/x-javascript text/javascript text/js image/x-icon image/vnd.microsoft.icon application/x-perl application/x-httpd-cgi text/xml application/xml application/xml+rss application/vnd.api+json  application/x-protobuf  application/json multipart/bag multipart/mixed application/xhtml+xml font/ttf font/otf font/x-woff image/svg+xml application/vnd.ms-fontobject application/ttf application/x-ttf application/otf application/x-otf application/truetype application/opentype application/x-opentype application/font-woff application/eot application/font application/font-sfnt application/wasm application/javascript-binast  application/manifest+json  application/ld+json;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    server <span style=color:#f92672>{</span>
+</span></span><span style=display:flex><span>        listen <span style=color:#ae81ff>80</span> default_server;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        server_name your_domain;  <span style=color:#75715e>#here is your domain</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        root /usr/share/nginx/html;
+</span></span><span style=display:flex><span>        index index.html;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        location ^~ /api/ <span style=color:#f92672>{</span>
+</span></span><span style=display:flex><span>            proxy_pass   http://zta-backend:8080;
+</span></span><span style=display:flex><span>        <span style=color:#f92672>}</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        location ~ .*<span style=color:#ae81ff>\.</span><span style=color:#f92672>(</span>gif|jpg|jpeg|png|bmp|swf|flv|mp4|ico<span style=color:#f92672>)</span>$ <span style=color:#f92672>{</span>
+</span></span><span style=display:flex><span>          expires 30d;
+</span></span><span style=display:flex><span>          access_log off;
+</span></span><span style=display:flex><span>        <span style=color:#f92672>}</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        location ~ .*<span style=color:#ae81ff>\.</span><span style=color:#f92672>(</span>js|css<span style=color:#f92672>)</span>?$ <span style=color:#f92672>{</span>
+</span></span><span style=display:flex><span>          expires 7d;
+</span></span><span style=display:flex><span>          access_log off;
+</span></span><span style=display:flex><span>        <span style=color:#f92672>}</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        location / <span style=color:#f92672>{</span>
+</span></span><span style=display:flex><span>          try_files $uri $uri/ /index.html;
+</span></span><span style=display:flex><span>        <span style=color:#f92672>}</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>}</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>}</span>
+</span></span></code></pre></div><p>config.json Example: Zero-trust security certificate needs to configure some certificate issuance information.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-json data-lang=json><span style=display:flex><span>{
+</span></span><span style=display:flex><span>  <span style=color:#f92672>&#34;auth_keys&#34;</span>: {
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&#34;intermediate&#34;</span>: {
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&#34;type&#34;</span>: <span style=color:#e6db74>&#34;standard&#34;</span>,
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&#34;key&#34;</span>: <span style=color:#e6db74>&#34;52abb3ac91971bb72bce17e7a289cd04476490b19e0d8eb7810dc42d4ac16c41&#34;</span>
+</span></span><span style=display:flex><span>    },
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&#34;default&#34;</span>: {
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&#34;type&#34;</span>: <span style=color:#e6db74>&#34;standard&#34;</span>,
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&#34;key&#34;</span>: <span style=color:#e6db74>&#34;0739a645a7d6601d9d45f6b237c4edeadad904f2fce53625dfdd541ec4fc8134&#34;</span>
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>  },
+</span></span><span style=display:flex><span>  <span style=color:#f92672>&#34;signing&#34;</span>: {
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&#34;profiles&#34;</span>: {
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&#34;default&#34;</span>: {
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&#34;usages&#34;</span>: [
+</span></span><span style=display:flex><span>          <span style=color:#e6db74>&#34;signing&#34;</span>,
+</span></span><span style=display:flex><span>          <span style=color:#e6db74>&#34;key encipherment&#34;</span>,
+</span></span><span style=display:flex><span>          <span style=color:#e6db74>&#34;server auth&#34;</span>,
+</span></span><span style=display:flex><span>          <span style=color:#e6db74>&#34;client auth&#34;</span>
+</span></span><span style=display:flex><span>        ],
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&#34;expiry&#34;</span>: <span style=color:#e6db74>&#34;1440h&#34;</span>,
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&#34;copy_extensions&#34;</span>: <span style=color:#66d9ef>true</span>,
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&#34;auth_key&#34;</span>: <span style=color:#e6db74>&#34;default&#34;</span>
+</span></span><span style=display:flex><span>      },
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&#34;intermediate&#34;</span>: {
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&#34;usages&#34;</span>: [
+</span></span><span style=display:flex><span>          <span style=color:#e6db74>&#34;digital signature&#34;</span>,
+</span></span><span style=display:flex><span>          <span style=color:#e6db74>&#34;cert sign&#34;</span>,
+</span></span><span style=display:flex><span>          <span style=color:#e6db74>&#34;crl sign&#34;</span>
+</span></span><span style=display:flex><span>        ],
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&#34;expiry&#34;</span>: <span style=color:#e6db74>&#34;17520h&#34;</span>,
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&#34;copy_extensions&#34;</span>: <span style=color:#66d9ef>true</span>,
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&#34;auth_key&#34;</span>: <span style=color:#e6db74>&#34;intermediate&#34;</span>,
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&#34;ca_constraint&#34;</span>: {
+</span></span><span style=display:flex><span>          <span style=color:#f92672>&#34;is_ca&#34;</span>: <span style=color:#66d9ef>true</span>
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=control-center-platformhttpsgithubcomztdbpzamanager></h3><p>When you deploy successfully, you can open the zero-trust platform address you configure. After opening it:</p><h4 id=zamanager-front-end-page>ZAManager Front-end page</h4><p><img src=https://user-images.githubusercontent.com/52234994/167241385-d0855ea9-729f-4820-b6d4-3e41837fa45f.png alt=image-20220506184355830></p><h4 id=resource-management>Resource management</h4><p><img src=https://user-images.githubusercontent.com/52234994/167241390-4b446ba7-f771-4b80-8fdf-4142431d83e8.png alt=image-20220506184628646></p><h4 id=service-management>Service management</h4><p><img src=https://user-images.githubusercontent.com/52234994/167241392-516eab72-5bcf-41cc-997e-a9b816336269.png alt=image-20220506184957141></p><h4 id=client-management>Client management</h4><p><img src=https://user-images.githubusercontent.com/52234994/167241398-4d103fb4-6d7e-461c-966f-2b30884cf1cc.png alt=image-20220506185220731></p><h3 id=ztanetwork-security-constructionhttpsgithubcomztdbpzasentinel><strong></strong></h3><p>The minimum closed loop of ZASentinel requires two service components, the client and server. We use the simplest way to run this project, which only requires server and client certificates to run:</p><p>In the ZAManager service, add resources, servers and clients (here you should understand the basic common sense and components of zero-trust projects, and I will not repeat them here)</p><p>After adding server and client resources, download the corresponding certificate as the project certificate configuration of ZA Sentinel (which can also be configured in the configuration file or environment variable configuration).</p><p>The same way the server and client startup rely on the corresponding certificate.</p><h4 id=server>Server</h4><p>Start the server in the private network and ensure that the server can access private resources:</p><pre tabindex=0><code>$ git clone git@github.com:ZTDBP/ZASentinel.git
+$ cd ZASentinel &amp;&amp; mkdir cert
+$ cd cert
+$ vim ca.pem
+....
+$ vim cert.pem
+....
+</code></pre><p>Start the project. Here we configure the server according to the certificate, and the port is 5091:</p><pre tabindex=0><code>$ go run cmd/main.go -c configs/config.toml
+</code></pre><p>The port started by the server is not directly accessed by the client. It is necessary to hang the server in the nginx agent, provide the ssl certificate service, and provide the server with public network services. Refer to the nginx configuration file:</p><p>The external port here defaults to port 443, and the client will also request the domain name and port configured by this nginx.</p><p>You need to modify the domain name you configure, which needs to be consistent with your new server or trunk information on the ZTA platform.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-shell data-lang=shell><span style=display:flex><span>server <span style=color:#f92672>{</span>
+</span></span><span style=display:flex><span>    listen <span style=color:#ae81ff>443</span> ssl; 							<span style=color:#75715e># The port is open here</span>
+</span></span><span style=display:flex><span>    server_name server.demo.xyz;	<span style=color:#75715e># Here is the domain name of your server or relay</span>
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>    ssl_certificate  cert/fullchain.crt;
+</span></span><span style=display:flex><span>    ssl_certificate_key cert/private.pem;
+</span></span><span style=display:flex><span>    ssl_session_timeout 5m;
+</span></span><span style=display:flex><span>    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4;
+</span></span><span style=display:flex><span>    ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
+</span></span><span style=display:flex><span>    ssl_prefer_server_ciphers on;
+</span></span><span style=display:flex><span>    location / <span style=color:#f92672>{</span>
+</span></span><span style=display:flex><span>      proxy_set_header X-Forwarded-For $remote_addr;
+</span></span><span style=display:flex><span>      proxy_set_header Host            $http_host;
+</span></span><span style=display:flex><span>      proxy_http_version 1.1;
+</span></span><span style=display:flex><span>      proxy_set_header Upgrade $http_upgrade;
+</span></span><span style=display:flex><span>      proxy_set_header Connection <span style=color:#e6db74>&#34;upgrade&#34;</span>;
+</span></span><span style=display:flex><span>      proxy_ssl_name <span style=color:#e6db74>&#34;server.demo.xyz&#34;</span>; <span style=color:#75715e># Here is the domain name of your server or relay</span>
+</span></span><span style=display:flex><span>      proxy_ssl_server_name on;
+</span></span><span style=display:flex><span>      proxy_pass http://127.0.0.1:5091; <span style=color:#75715e># Here is the listening port of your server or relay</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>}</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>}</span>
+</span></span><span style=display:flex><span>server <span style=color:#f92672>{</span>
+</span></span><span style=display:flex><span>    listen 80;										  <span style=color:#75715e># The port is open here</span>
+</span></span><span style=display:flex><span>    server_name server.demo.xyz;		<span style=color:#75715e># Here is the domain name of your server or relay</span>
+</span></span><span style=display:flex><span>    rewrite ^<span style=color:#f92672>(</span>.*<span style=color:#f92672>)</span>$ https://$host$1 permanent;
+</span></span><span style=display:flex><span><span style=color:#f92672>}</span>
+</span></span></code></pre></div><h4 id=relay>Relay</h4><p>The relay is a non-essential service. The client can directly connect to the server or add multiple repeaters, which mainly depends on whether you need a relay.</p><p>The deployment of the trunk can change geographically. His role is more inclined to accelerate the network. As with the deployment of the server, as a basic service, it is necessary to use its own services with nginx prox agents and provide ssl certificate services.</p><p>Secondly, Relay can be hung on the CDN network to better prevent DDOS attacks.</p><h4 id=client>Client</h4><p>Start the client locally, and the startup method is the same as that of the server. Here, the startup client is configured according to the certificate, and the port is 3091:</p><p><img src=https://user-images.githubusercontent.com/52234994/167241289-6ccabaef-67dc-4631-a4bf-9b356fec9695.png alt=image-20220506173134287></p><h4 id=test>Test</h4><p>The resource I just configured in ZAManager is mysql, the responding server and client, and we also configure mysql, so we directly connect to the client, and the client will proxy our connection:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-shell data-lang=shell><span style=display:flex><span>$ mysql -h 127.0.0.1 -uroot -P3091 -p
+</span></span></code></pre></div><p><img src=https://user-images.githubusercontent.com/52234994/167241292-1a28a026-7fc9-46d0-8354-28dfcae5b019.png alt=image-20220506174223718></p></section><div class=clearfix><div class="post-date pull-left"><span class=small>Posted on
+May 7, 2022 at 14:19</span></div><div class=pull-right><span class="post-tag small"><a href=https://ztdbp.xyz/ztdbp_blog/tags/zta/>#ZTA</a></span>
+<span class="post-tag small"><a href=https://ztdbp.xyz/ztdbp_blog/tags/ztdbp/>#ZTDBP</a></span>
+<span class="post-tag small"><a href=https://ztdbp.xyz/ztdbp_blog/tags/practice/>#Practice</a></span></div></div><footer><div class=delimiter></div><div class=pager-container><a class="btn btn-primary btn-older-posts" href=https://ztdbp.xyz/ztdbp_blog/zaca-project-introduction/><div><span aria-hidden=true>&larr;</span> Older Posts</div></a><a class="btn btn-primary btn-newer-posts" href=https://ztdbp.xyz/ztdbp_blog/zerodata-whitepaper/><div>Newer Posts <span aria-hidden=true>&rarr;</span></div></a></div></footer></article><div class=delimiter></div></main><footer class="container global-footer"><div class="copyright-note pull-left">&copy 2022 ZTDBP
+   </div><div class="sns-links hidden-print"></div></footer></body></html>
